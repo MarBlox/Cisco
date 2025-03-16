@@ -1,0 +1,133 @@
+Inicialização Básica dos Equipamentos de Rede
+configure terminal
+hostname <nome_do_dispositivo>
+enable secret <password>
+line console 0
+password <password>
+login
+exit
+line vty 0 4
+password <password>
+login
+exit
+service password-encryption
+no ip domain-lookup
+
+Configuração de Switching
+
+  Configuração de Acesso, Agregação e Core
+  vlan 10
+  name Users
+  vlan 20
+  name Servers
+  exit
+  interface range FastEthernet 0/1-10
+  switchport mode access
+  switchport access vlan 10
+  exit
+  interface range FastEthernet 0/11-20
+  switchport mode access
+  switchport access vlan 20
+  exit
+
+  Configuração de VTP
+  vtp mode server
+  vtp domain empresa
+  vtp password <password>
+  vtp version 2
+
+  Configuração de Link Aggregation (EtherChannel)
+  interface range GigabitEthernet 0/1-2
+  channel-group 1 mode active
+  exit
+  interface Port-channel 1
+  switchport mode trunk
+  exit
+
+  Recursos de Segurança em Camada 2
+  interface range FastEthernet 0/1-10
+  switchport port-security
+  switchport port-security maximum 2
+  switchport port-security violation restrict
+  switchport port-security mac-address sticky
+  exit
+  ip dhcp snooping
+  ip dhcp snooping vlan 10,20
+  ip arp inspection vlan 10,20
+
+  Configuração de STP
+  spanning-tree mode rapid-pvst
+  spanning-tree vlan 10 root primary
+  spanning-tree vlan 20 root secondary
+
+  QoS (Quality of Service)
+  mls qos
+  interface FastEthernet 0/1
+  mls qos trust dscp
+  exit
+
+Configuração de Routing
+  
+  Configuração de OSPF
+  router ospf 1
+  network 192.168.1.0 0.0.0.255 area 0
+  network 192.168.2.0 0.0.0.255 area 0
+  exit
+
+  Configuração de BGP
+  router bgp 65000
+  neighbor 192.168.3.1 remote-as 65001
+  exit
+
+Tolerância a Falhas no Roteamento e Switching
+
+  interface GigabitEthernet 0/0
+  standby 1 ip 192.168.1.254
+  standby 1 priority 110
+  standby 1 preempt
+  exit
+
+Segurança em Control Plane e Data Plane
+  access-list 100 deny icmp any any
+  access-list 100 permit ip any any
+  interface GigabitEthernet 0/0
+  ip access-group 100 in
+  exit
+  control-plane
+  policy-map CONTROL_PLANE
+  class CLASS_MANAGEMENT
+  police 80000 conform-action transmit exceed-action drop
+  exit
+  service-policy input CONTROL_PLANE
+
+Conectividade entre Filiais
+
+  GRE Tunnel
+  interface Tunnel0
+  ip address 192.168.10.1 255.255.255.252
+  tunnel source GigabitEthernet 0/0
+  tunnel destination 192.168.10.2
+  exit
+
+  IPSec VPN
+  crypto isakmp policy 10
+  encryption aes 256
+  hash sha256
+  authentication pre-share
+  group 5
+  lifetime 86400
+  exit
+  crypto isakmp key <key> address 192.168.10.2
+  crypto ipsec transform-set VPN-SET esp-aes 256 esp-sha-hmac
+  crypto map VPN-MAP 10 ipsec-isakmp
+  set peer 192.168.10.2
+  set transform-set VPN-SET
+  match address 110
+  exit
+  interface GigabitEthernet 0/0
+  crypto map VPN-MAP
+
+Monitorização e Análise de Tráfego
+
+snmp-server community public RO
+snmp-server enable traps
